@@ -1,9 +1,9 @@
 ﻿using Microsoft.Data.Sqlite;
 
-Console.WriteLine("Welcome !");
-Console.WriteLine("Enter your username :");
+Logger.Print("Welcome !");
+Logger.Print("Enter your username :");
 string? User = Console.ReadLine();
-Console.WriteLine("Enter your Password : ");
+Logger.Print("Enter your Password : ");
 string? Pass = Console.ReadLine();
 
 Main.CreateTable();
@@ -13,7 +13,21 @@ if (Main.Login(User, Pass) == true)
     Logger.Print($"Permission Level : {Perms}");
     if ( Perms == 1)
     {
-
+        while (true){
+            Logger.Print("Choose your action : ");
+            Logger.Print("0) Exit");
+            Logger.Print("1) View all users");
+            Logger.Print("2) Manage user permissions");
+            string? Input = Console.ReadLine();
+            if(Input == "0")
+            {
+                break;
+            }
+            else
+            {
+                Main.AdminAction(Input, User);
+            }
+        }
     }
 }
 
@@ -31,12 +45,12 @@ class Main
             using var command = new SqliteCommand(sql, connection);
             command.ExecuteNonQuery();
 
-            Console.WriteLine("Table 'users' created successfully.");
+            Logger.Print("Table 'users' created successfully.");
             connection.Close();
         }
         catch (SqliteException ex)
         {
-            Console.WriteLine(ex.Message);
+            Logger.Print(ex.Message);
         }
     }
     public static bool Login(string? Username, string? Password)
@@ -56,12 +70,12 @@ class Main
                 {
                     if (Password == reader.GetString(1))
                     {
-                        Console.WriteLine($"User {Username} Logged in Successfully");
+                        Logger.Print($"User {Username} Logged in Successfully");
                         return true;
                     }
                     else
                     {
-                        Console.WriteLine("Incorrect Password !");
+                        Logger.Print("Incorrect Password !");
                         return false;
                     }
                 }
@@ -82,13 +96,13 @@ class Main
                     comm.Parameters.AddWithValue("@permissions", 0);
                 }
                 var rowInserted = comm.ExecuteNonQuery();
-                Console.WriteLine($"The user '{Username}' has been registered successfully.");
+                Logger.Print($"The user '{Username}' has been registered successfully.");
                 return true;
             }
         }
         catch (SqliteException ex)
         {
-            Console.WriteLine(ex.Message);
+            Logger.Print(ex.Message);
         }
     return false;
     }
@@ -114,15 +128,62 @@ class Main
         }
         catch (SqliteException ex)
         {
-            Console.WriteLine(ex.Message);
+            Logger.Print(ex.Message);
         }
         return 0;
+    }
+
+    public static void AdminAction(string? Action, string? ActiveUser)
+    {
+        if(Action == "1")
+        {
+            var sql = "SELECT * FROM users";
+            using var connection = new SqliteConnection($"Data Source=users.db");
+            connection.Open();
+            using var command = new SqliteCommand(sql, connection);
+            using var reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    string? Name = Convert.ToString(reader["username"]);
+                    string? Perms = Convert.ToString(reader["permissions"]);
+                    Logger.Print($"User : {Name}, Permission Level : {Perms}");
+                }
+            }
+        }
+        else if (Action == "2")
+        {
+            try
+            {
+                Logger.Print("Enter user to modify : ");
+                string? User = Console.ReadLine();
+                if(User == ActiveUser)
+                {
+                    return;
+                }
+                Logger.Print("Enter user's new permission level : ");
+                string? Perm = Console.ReadLine();
+                var sql = "UPDATE users set permissions = @perm WHERE username = @username";
+                using var connection = new SqliteConnection($"Data Source=users.db");
+                connection.Open();
+                using var command = new SqliteCommand(sql, connection);
+                command.Parameters.AddWithValue("@username", User?.ToLower());
+                command.Parameters.AddWithValue("@perm", Convert.ToInt32(Perm));
+                command.ExecuteNonQuery();
+                Logger.Print("Updated user permissions");
+            }
+            catch(SqliteException ex)
+            {
+                Logger.Print(ex.Message);
+            }
+        }
     }
 }
 
 class Logger
 {
-    public static void Print(string Value)
+    public static void Print(string? Value)
     {
         Console.WriteLine(Value);
     }
